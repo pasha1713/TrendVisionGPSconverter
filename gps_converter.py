@@ -37,16 +37,19 @@ prev_time = None
 
 # Создаем парсер аргументов командной строки
 parser = argparse.ArgumentParser()
-parser.add_argument('input_file', help='Входной файл')
+#parser.add_argument('input_file', help='Входной файл')
 parser.add_argument('--output', help='Маска имени выходного файла')
 args = parser.parse_args()
 
 if not sys.stdin.isatty():
+# Считываем дату из первой записи входного файла
+#    with open(args.input_file, 'r') as f:
+#        line = f.readline()
     for line in sys.stdin:
         # Обработка строки с координатами                                                                             
         data = line.strip().split(',')                                                                                
         time = data[0][9:]                                                                                            
-        time_str = f'{time[:2]}{time[2:4]}{time[4:]}.{"0" * 3}'                                                       
+        time_str = f'{time[:2]}{time[2:4]}{time[4:]}.{"0" * 3}'
         lat_deg = int(data[1][:2])                                                                                    
         lat_min = float(data[1][2:])                                                                                  
         lat = lat_deg + lat_min / 60                                                                                  
@@ -69,23 +72,24 @@ if not sys.stdin.isatty():
         if prev_lat is not None and prev_lon is not None and prev_time is not None:                                  
             distance = geodesic((prev_lat, prev_lon), (lat, lon)).meters                                             
             time_diff = (curr_time - prev_time).total_seconds()                                                      
-            speed = distance / time_diff * 1.94384  # перевод в узлы                                                 
+            if time_diff!=0:
+                speed = distance / time_diff * 1.94384  # перевод в узлы                                                 
 #            speed = '{:.6f}'.format(speed)  # ограничение точности до 6 символов после запятой                       
-            precision = 2  # количество символов после запятой                                                           
-            format_str = '{{:.{}f}}'.format(precision)                                                                   
-            formatted_speed = format_str.format(speed)                                                                   
         else:                                                                                                        
 #            speed = 0.0                                                                                              
-            speed = data[5]                                                                                              
+            speed = float(data[5])                                                                                              
             # Преобразуем дату в формат YYYYMMDD_HHMMSS
-            date = datetime.datetime.strptime(data[0], 'A%Y%m%d%H%M%S')
+            date = curr_time
             date_string = date.strftime('%Y%m%d_%H%M%S')
 
             # Создаем имя выходного файла на основе маски, если она была указана
             if args.output:
-                output_filename = args.output.replace('%s', date_string)
+                output_filename = f'{date_string}.nmea'
             else:
                 output_filename = None
+        precision = 2  # количество символов после запятой                                                           
+        format_str = '{{:.{}f}}'.format(precision)                                                                   
+        formatted_speed = format_str.format(speed)                                                                   
 
         direction = f'{float(data[6]):.6f}'                                                                          
         prev_lat = lat                                                                                               
@@ -96,10 +100,10 @@ if not sys.stdin.isatty():
         # Формирование сообщений NMEA-0183                                                                            
         rmc_template = '$GPRMC,{time},A,{lat},{lat_dir},{lon},{lon_dir},{speed},{direction},{date},,*{checksum}'      
         rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
-                                          speed=speed, direction=data[6], date=date_str, mode='A',                  
+                                          speed=formatted_speed, direction=data[6], date=date_str, mode='A',                  
                                           checksum=calculate_checksum(rmc_template.format(time=time_str,              
                                           lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
-                                          speed=speed, direction=data[6], date=date_str, mode='A', checksum='')))   
+                                          speed=formatted_speed, direction=data[6], date=date_str, mode='A', checksum='')))   
 #        rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
 #                                          speed=data[5], direction=data[6], date=date_str, mode='A',                  
 #                                          checksum=calculate_checksum(rmc_template.format(time=time_str,              
@@ -107,8 +111,17 @@ if not sys.stdin.isatty():
 #                                          speed=data[5], direction=data[6], date=date_str, mode='A', checksum='')))   
         # Если имя выходного файла было указано, сохраняем результат в файл
         if output_filename:
-            with open(output_filename, 'w') as f:
-                f.write(rmc_message)
+            if 'f' in globals():
+                if not f.closed:
+                    f.write(rmc_message)
+                else:
+                    with open(output_filename, 'a') as f:
+                        f.write(rmc_message)
+                        f.write('\n')
+            else:
+                with open(output_filename, 'w') as f:
+                    f.write(rmc_message)
+                    f.write('\n')
         else:
             # Иначе просто выводим результат на экран
             print(rmc_message)
