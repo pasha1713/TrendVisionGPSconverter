@@ -18,6 +18,7 @@ def print_help():
     """
     Выводит информацию о использовании скрипта
     """
+    print(old_help)
     print("Этот скрипт был разработан совместно мной R2ARZ и моим помощником, AI-ассистентом. Скрипт")
     print("предназначен для обработки данных GPS и преобразования их в формат NMEA-0183.")
     print("Использование скрипта:")
@@ -38,23 +39,9 @@ prev_time = None
 # Создаем парсер аргументов командной строки
 parser = argparse.ArgumentParser()
 #parser.add_argument('input_file', help='Входной файл')
-parser.add_argument('--output', help='Маска имени выходного файла')
+parser.add_argument('--output', help='Выводим в файл?')
 # Получаем старый help
 old_help = parser.format_help()
-# Добавляем новую строку в help
-new_help = old_help + '\nДополнительные опции:\n  --output OUTPUT_MASK\tМаска имени выходного файла\n'
-new_help = new_help + 'Этот скрипт был разработан совместно мной R2ARZ и моим помощником, AI-ассистентом. Скрипт\n'
-new_help = new_help + 'предназначен для обработки данных GPS и преобразования их в формат NMEA-0183.\n'
-new_help = new_help + 'Использование скрипта:\n'
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Скрипт запущен как exe-файл
-    new_help = new_help + "1. Запустите скрипт командой 'gps_converter.exe <in_file.txt'\n"
-else:
-    # Скрипт запущен как py-файл
-    new_help = new_help + "1. Запустите скрипт командой 'python gps_converter.py <in_file.txt'\n"
-new_help = new_help + '2. Введите данные GPS в формате:\n'
-new_help = new_help + 'A20221110020351,5533.567871,N,3709.591309,E,57.70,63.06,0,-1,8,0.000000\n'
-new_help = new_help + '3. После ввода каждой строки скрипт будет выводить сообщение в формате NMEA-0183.\n'
 args = parser.parse_args()
 
 if not sys.stdin.isatty():
@@ -130,16 +117,20 @@ if not sys.stdin.isatty():
             if 'f' in globals():
                 if not f.closed:
                     f.write(rmc_message)
+                    f.write('\n')
                 else:
-                    with open(output_filename, 'a') as f:
-                        f.write(rmc_message)
-                        f.write('\n')
-            else:
-                with open(output_filename, 'w') as f:
+                    f = open(output_filename, 'a')
                     f.write(rmc_message)
                     f.write('\n')
+            else:
+                f = open(output_filename, 'w')
+                f.write(rmc_message)
+                f.write('\n')
         else:
             # Иначе просто выводим результат на экран
             print(rmc_message)
 else:
     print_help()
+if 'f' in globals():
+    if not f.closed:
+        f.close()
