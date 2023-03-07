@@ -39,7 +39,8 @@ prev_time = None
 # Создаем парсер аргументов командной строки
 parser = argparse.ArgumentParser()
 #parser.add_argument('input_file', help='Входной файл')
-parser.add_argument('--output', help='Выводим в файл?')
+parser.add_argument('--output',action='store_true', help='Выводим в файл?')
+parser.add_argument('--speed', action='store_true', help='Calculate speed based on GPS coordinates?')
 # Получаем старый help
 old_help = parser.format_help()
 args = parser.parse_args()
@@ -102,16 +103,18 @@ if not sys.stdin.isatty():
         date_str = f'{data[0][7:9]}{data[0][5:7]}{data[0][3:5]}'                                                      
         # Формирование сообщений NMEA-0183                                                                            
         rmc_template = '$GPRMC,{time},A,{lat},{lat_dir},{lon},{lon_dir},{speed},{direction},{date},,*{checksum}'      
-        rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
-                                          speed=formatted_speed, direction=data[6], date=date_str, mode='A',                  
-                                          checksum=calculate_checksum(rmc_template.format(time=time_str,              
-                                          lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
-                                          speed=formatted_speed, direction=data[6], date=date_str, mode='A', checksum='')))   
-#        rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
-#                                          speed=data[5], direction=data[6], date=date_str, mode='A',                  
-#                                          checksum=calculate_checksum(rmc_template.format(time=time_str,              
-#                                          lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
-#                                          speed=data[5], direction=data[6], date=date_str, mode='A', checksum='')))   
+        if args.speed:
+            rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
+                                              speed=formatted_speed, direction=data[6], date=date_str, mode='A',                  
+                                              checksum=calculate_checksum(rmc_template.format(time=time_str,              
+                                              lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
+                                              speed=formatted_speed, direction=data[6], date=date_str, mode='A', checksum='')))
+        else:
+            rmc_message = rmc_template.format(time=time_str, lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],
+                                              speed=data[5], direction=data[6], date=date_str, mode='A',                  
+                                              checksum=calculate_checksum(rmc_template.format(time=time_str,              
+                                              lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
+                                              speed=data[5], direction=data[6], date=date_str, mode='A', checksum='')))   
         # Если имя выходного файла было указано, сохраняем результат в файл
         if output_filename:
             if 'f' in globals():
