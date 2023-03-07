@@ -1,4 +1,6 @@
-﻿import sys
+﻿import argparse
+import datetime
+import sys
 from geopy.distance import geodesic
 from datetime import datetime
 
@@ -32,6 +34,12 @@ def print_help():
 prev_lat = None
 prev_lon = None
 prev_time = None
+
+# Создаем парсер аргументов командной строки
+parser = argparse.ArgumentParser()
+parser.add_argument('input_file', help='Входной файл')
+parser.add_argument('--output', help='Маска имени выходного файла')
+args = parser.parse_args()
 
 if not sys.stdin.isatty():
     for line in sys.stdin:
@@ -69,6 +77,16 @@ if not sys.stdin.isatty():
         else:                                                                                                        
 #            speed = 0.0                                                                                              
             speed = data[5]                                                                                              
+            # Преобразуем дату в формат YYYYMMDD_HHMMSS
+            date = datetime.datetime.strptime(data[0], 'A%Y%m%d%H%M%S')
+            date_string = date.strftime('%Y%m%d_%H%M%S')
+
+            # Создаем имя выходного файла на основе маски, если она была указана
+            if args.output:
+                output_filename = args.output.replace('%s', date_string)
+            else:
+                output_filename = None
+
         direction = f'{float(data[6]):.6f}'                                                                          
         prev_lat = lat                                                                                               
         prev_lon = lon                                                                                               
@@ -87,6 +105,12 @@ if not sys.stdin.isatty():
 #                                          checksum=calculate_checksum(rmc_template.format(time=time_str,              
 #                                          lat=lat_ddmm, lat_dir=data[2], lon=lon_ddmm, lon_dir=data[4],               
 #                                          speed=data[5], direction=data[6], date=date_str, mode='A', checksum='')))   
-        print(rmc_message)
+        # Если имя выходного файла было указано, сохраняем результат в файл
+        if output_filename:
+            with open(output_filename, 'w') as f:
+                f.write(rmc_message)
+        else:
+            # Иначе просто выводим результат на экран
+            print(rmc_message)
 else:
     print_help()
